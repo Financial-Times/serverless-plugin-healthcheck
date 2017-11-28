@@ -1,11 +1,11 @@
-Serverless WarmUP Plugin ♨
-=============================
+Serverless HealthCheck  Plugin
+==============================
 [![serverless](http://public.serverless.com/badges/v3.svg)](http://www.serverless.com)
-[![npm version](https://badge.fury.io/js/serverless-plugin-warmup.svg)](https://badge.fury.io/js/serverless-plugin-warmup)
-[![npm downloads](https://img.shields.io/npm/dm/serverless-plugin-warmup.svg)](https://www.npmjs.com/package/serverless-plugin-warmup)
-[![license](https://img.shields.io/npm/l/serverless-plugin-warmup.svg)](https://raw.githubusercontent.com/FidelLimited/serverless-plugin-warmup/master/LICENSE)
+[![npm version](https://badge.fury.io/js/serverless-plugin-healthcheck.svg)](https://badge.fury.io/js/serverless-plugin-healthcheck)
+[![npm downloads](https://img.shields.io/npm/dm/serverless-plugin-healthcheck.svg)](https://www.npmjs.com/package/serverless-plugin-healthcheck)
+[![license](https://img.shields.io/npm/l/serverless-plugin-healthcheck.svg)](https://raw.githubusercontent.com/FidelLimited/serverless-plugin-healthcheck/master/LICENSE)
 
-Keep your lambdas warm during Winter.
+Check the health of your lambdas.
 
 **Requirements:**
 * Serverless *v1.12.x* or higher.
@@ -13,30 +13,30 @@ Keep your lambdas warm during Winter.
 
 ## How it works
 
-WarmUP solves *cold starts* by creating one schedule event lambda that invokes all the service lambdas you select in a configured time interval (default: 5 minutes) or a specific time, forcing your containers to stay alive.
+Healthcheck solves *heart beat* by creating one schedule event lambda that invokes all the service lambdas you select in a configured time interval (default: 5 minutes) or a specific time, forcing your containers to report their status.
 
 ## Setup
 
  Install via npm in the root of your Serverless service:
 ```
-npm install serverless-plugin-warmup --save-dev
+npm install serverless-plugin-healthcheck --save-dev
 ```
 
 * Add the plugin to the `plugins` array in your Serverless `serverless.yml`:
 
 ```yml
 plugins:
-  - serverless-plugin-warmup
+  - serverless-plugin-healthcheck
 ```
 
-* Add a `warmup` property to all functions you want to be warm.
+* Add a `healthcheck` property to all functions you want to be warm.
 
-You can enable WarmUp in general:
+You can enable healthcheck in general:
 
 ```yml
 functions:
   hello:
-    warmup: true
+    healthcheck: true
 ```
 
 For a specific stage:
@@ -44,7 +44,7 @@ For a specific stage:
 ```yml
 functions:
   hello:
-    warmup: production
+    healthcheck: production
 ```
 
 For several stages:
@@ -52,11 +52,11 @@ For several stages:
 ```yml
 functions:
   hello:
-    warmup:
+    healthcheck:
       - production
       - staging
 ```
-* WarmUP to be able to `invoke` lambdas requires the following Policy Statement in `iamRoleStatements`:
+* helthcheck to be able to `invoke` lambdas requires the following Policy Statement in `iamRoleStatements`:
 
 ```yaml
 iamRoleStatements:
@@ -71,29 +71,15 @@ iamRoleStatements:
         - Ref: AWS::AccountId
         - function:${self:service}-${opt:stage, self:provider.stage}-*
 ```
-If using pre-warm, the deployment user also needs a similar policy so it can run the WarmUp lambda.
+If using pre-check, the deployment user also needs a similar policy so it can run the healthcheck lambda.
 
-* Add an early callback call when the event source is `serverless-plugin-warmup`. You should do this early exit before running your code logic, it will save your execution duration and cost:
-
-```javascript
-module.exports.lambdaToWarm = function(event, context, callback) {
-  /** Immediate response for WarmUP plugin */
-  if (event.source === 'serverless-plugin-warmup') {
-    console.log('WarmUP - Lambda is warm!')
-    return callback(null, 'Lambda is warm!')
-  }
-
-  ... add lambda logic after
-}
-```
-
-* All done! WarmUP will run on SLS `deploy` and `package` commands
+* All done! healthcheck will run on SLS `deploy` and `package` commands
 
 ## Options
 
 * **cleanFolder** (default `true`)
 * **memorySize** (default `128`)
-* **name** (default `${service}-${stage}-warmup-plugin`)
+* **name** (default `${service}-${stage}-healthcheck-plugin`)
 * **schedule** (default `rate(5 minutes)`) - More examples [here](https://docs.aws.amazon.com/lambda/latest/dg/tutorial-scheduled-events-schedule-expressions.html).
 * **timeout** (default `10` seconds)
 * **prewarm** (default `false`)
@@ -107,28 +93,23 @@ custom:
     name: 'make-them-pop'
     schedule: 'cron(0/5 8-17 ? * MON-FRI *)' // Run WarmUP every 5 minutes Mon-Fri between 8:00am and 5:55pm (UTC)
     timeout: 20
-    prewarm: true // Run WarmUp immediately after a deployment
-    folderName: '_warmup' // Name of the folder created for the generated warmup lambda
+    precheck: true // Run healthcheck immediately after a deployment
+    folderName: '_healthcheck' // Name of the folder created for the generated healthcheck lambda
 ```
 
-**Options should be tweaked depending on:**
-* Number of lambdas to warm up
-* Day cold periods
-* Desire to avoid cold lambdas after a deployment
-
-**Lambdas invoked by WarmUP will have event source `serverless-plugin-warmup`:**
+**Lambdas invoked by healthcheck will have event source `serverless-plugin-healthcheck`:**
 
 ```json
 {
   "Event": {
-    "source": "serverless-plugin-warmup"
+    "source": "serverless-plugin-healthcheck"
   }
 }
 ```
 
 ## Artifact
 
-If you are doing your own [package artifact](https://serverless.com/framework/docs/providers/aws/guide/packaging#artifact) set option `cleanFolder` to `false` and run `serverless package`. This will allow you to extract the `warmup` NodeJS lambda file from the `_warmup` folder and add it in your custom artifact logic.
+If you are doing your own [package artifact](https://serverless.com/framework/docs/providers/aws/guide/packaging#artifact) set option `cleanFolder` to `false` and run `serverless package`. This will allow you to extract the `healthcheck` NodeJS lambda file from the `_healthcheck` folder and add it in your custom artifact logic.
 
 ## Gotchas
 

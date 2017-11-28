@@ -1,31 +1,29 @@
 {
-  "name": "serverless-plugin-warmup",
-  "version": "3.3.0-rc.1",
-  "description": "Keep your lambdas warm during Winter.",
+  "name": "serverless-plugin-healthcheck",
+  "version": "0.0.1",
+  "description": "Check your lambdas are healthy.",
   "main": "src/index.js",
   "scripts": {
     "lint": "standard src/**",
     "lint:fix": "standard --fix src/**"
   },
-  "author": "Gonçalo Neves",
+  "author": "Geoff Thorpe",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/FidelLimited/serverless-plugin-warmup.git"
+    "url": "git+https://github.com/FinancialTimes/serverless-plugin-healthcheck.git"
   },
   "keywords": [
-    "serverless plugin warm up lambdas",
-    "serverless warmup",
+    "serverless plugin healthcheck lambdas",
+    "serverless healthcheck",
     "serverless plugin",
     "lambda serverless",
-    "warm lambda",
-    "lambda coldstart",
-    "lambda cold"
+    "healthcheck lambda"
   ],
   "bugs": {
-    "url": "https://github.com/FidelLimited/serverless-plugin-warmup/issues"
+    "url": "https://github.com/FinancialTimes/serverless-plugin-healthcheck/issues"
   },
-  "homepage": "https://github.com/FidelLimited/serverless-plugin-warmup#readme",
+  "homepage": "https://github.com/FinancialTimes/serverless-plugin-healthcheck#readme",
   "dependencies": {
     "bluebird": "^3.5.0",
     "fs-extra": "^3.0.1"

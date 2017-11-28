@@ -1,7 +1,7 @@
 'use strict'
 
 /**
- * @module serverless-plugin-warmup
+ * @module serverless-plugin-healthcheck
  *
  * @see {@link https://serverless.com/framework/docs/providers/aws/guide/plugins/}
  *
@@ -14,12 +14,12 @@ const fs = BbPromise.promisifyAll(require('fs-extra'))
 const path = require('path')
 
 /**
- * @classdesc Keep your lambdas warm during Winter
- * @class WarmUP
+ * @classdesc Check the health of your lambdas
+ * @class HealthCheck
  * */
-class WarmUP {
+class HealthCheck {
   /**
-   * @description Serverless Warm Up
+   * @description Serverless Health Check
    * @constructor
    *
    * @param {!Object} serverless - Serverless object
@@ -40,16 +40,16 @@ class WarmUP {
   }
 
   /**
-   * @description After package initialize hook. Create warmer function and add it to the service.
+   * @description After package initialize hook. Create healthcheck function and add it to the service.
    *
-   * @fulfil {} — Warm up set
-   * @reject {Error} Warm up error
+   * @fulfil {} — Health Check set
+   * @reject {Error} Health Check error
    *
    * @return {(boolean|Promise)}
    * */
   afterPackageInitialize () {
     this.configPlugin()
-    return this.createWarmer()
+    return this.createHealthCheck()
   }
 
   /**
@@ -67,15 +67,15 @@ class WarmUP {
   /**
    * @description After deploy functions hooks
    *
-   * @fulfil {} — Functions warmed up sucessfuly
-   * @reject {Error} Functions couldn't be warmed up
+   * @fulfil {} — Functions health checked up sucessfuly
+   * @reject {Error} Functions couldn't be health checked
    *
    * @return {Promise}
    * */
   afterDeployFunctions () {
     this.configPlugin()
-    if (this.warmup.prewarm) {
-      return this.warmUpFunctions()
+    if (this.healthcheck.precheck) {
+      return this.healthCheckFunctions()
     }
   }
 
@@ -85,60 +85,60 @@ class WarmUP {
    * @return {}
    * */
   configPlugin () {
-    /** Set warm up folder, file and handler paths */
-    this.folderName = '_warmup'
-    if (this.custom && this.custom.warmup && typeof this.custom.warmup.folderName === 'string') {
-      this.folderName = this.custom.warmup.folderName
+    /** Set health check folder, file and handler paths */
+    this.folderName = '_healthcheck'
+    if (this.custom && this.custom.healthcheck && typeof this.custom.healthcheck.folderName === 'string') {
+      this.folderName = this.custom.healthcheck.folderName
     }
     this.pathFolder = this.getPath(this.folderName)
     this.pathFile = this.pathFolder + '/index.js'
-    this.pathHandler = this.folderName + '/index.warmUp'
+    this.pathHandler = this.folderName + '/index.healthCheck'
 
     /** Default options */
-    this.warmup = {
+    this.healthcheck = {
       cleanFolder: true,
       memorySize: 128,
-      name: this.serverless.service.service + '-' + this.options.stage + '-warmup-plugin',
+      name: this.serverless.service.service + '-' + this.options.stage + '-healthcheck-plugin',
       schedule: ['rate(5 minutes)'],
       timeout: 10,
       prewarm: false
     }
 
     /** Set global custom options */
-    if (!this.custom || !this.custom.warmup) {
+    if (!this.custom || !this.custom.healthcheck) {
       return
     }
 
     /** Clean folder */
-    if (typeof this.custom.warmup.cleanFolder === 'boolean') {
-      this.warmup.cleanFolder = this.custom.warmup.cleanFolder
+    if (typeof this.custom.healthcheck.cleanFolder === 'boolean') {
+      this.healthcheck.cleanFolder = this.custom.healthcheck.cleanFolder
     }
 
     /** Memory size */
-    if (typeof this.custom.warmup.memorySize === 'number') {
-      this.warmup.memorySize = this.custom.warmup.memorySize
+    if (typeof this.custom.healthcheck.memorySize === 'number') {
+      this.healthcheck.memorySize = this.custom.healthcheck.memorySize
     }
 
     /** Function name */
-    if (typeof this.custom.warmup.name === 'string') {
-      this.warmup.name = this.custom.warmup.name
+    if (typeof this.custom.healthcheck.name === 'string') {
+      this.healthcheck.name = this.custom.healthcheck.name
     }
 
     /** Schedule expression */
-    if (typeof this.custom.warmup.schedule === 'string') {
-      this.warmup.schedule = [this.custom.warmup.schedule]
-    } else if (Array.isArray(this.custom.warmup.schedule)) {
-      this.warmup.schedule = this.custom.warmup.schedule
+    if (typeof this.custom.healthcheck.schedule === 'string') {
+      this.healthcheck.schedule = [this.custom.healthcheck.schedule]
+    } else if (Array.isArray(this.custom.healthcheck.schedule)) {
+      this.healthcheck.schedule = this.custom.healthcheck.schedule
     }
 
     /** Timeout */
-    if (typeof this.custom.warmup.timeout === 'number') {
-      this.warmup.timeout = this.custom.warmup.timeout
+    if (typeof this.custom.healthcheck.timeout === 'number') {
+      this.healthcheck.timeout = this.custom.healthcheck.timeout
     }
 
-    /** Pre-warm */
-    if (typeof this.custom.warmup.prewarm === 'boolean') {
-      this.warmup.prewarm = this.custom.warmup.prewarm
+    /** Pre-check */
+    if (typeof this.custom.healthcheck.precheck === 'boolean') {
+      this.healthcheck.precheck = this.custom.healthcheck.precheck
     }
   }
 
@@ -162,161 +162,161 @@ class WarmUP {
    * @return {Promise}
    * */
   cleanFolder () {
-    if (!this.warmup.cleanFolder) {
+    if (!this.healthcheck.cleanFolder) {
       return Promise.resolve()
     }
     return fs.removeAsync(this.pathFolder)
   }
 
   /**
-   * @description Warm up functions
+   * @description Health check functions
    *
-   * @fulfil {} — Warm up function created and added to service
-   * @reject {Error} Warm up error
+   * @fulfil {} — Health check function created and added to service
+   * @reject {Error} Health check error
    *
    * @return {Promise}
    * */
-  createWarmer () {
+  createHealthCheck () {
     /** Get functions */
     const allFunctions = this.serverless.service.getAllFunctions()
 
-    /** Filter functions for warm up */
+    /** Filter functions for health check */
     return BbPromise.filter(allFunctions, (functionName) => {
       const functionObject = this.serverless.service.getFunction(functionName)
 
       /** Function needs to be warm */
-      if (functionObject.warmup === true ||
-        functionObject.warmup === this.options.stage ||
-        (Array.isArray(functionObject.warmup) &&
-          functionObject.warmup.indexOf(this.options.stage) !== -1)) {
+      if (functionObject.healthcheck === true ||
+        functionObject.healthcheck === this.options.stage ||
+        (Array.isArray(functionObject.healthcheck) &&
+          functionObject.healthcheck.indexOf(this.options.stage) !== -1)) {
         return functionObject
       }
     }).then((functionNames) => {
-      /** Skip writing if no functions need to be warm */
+      /** Skip writing if no functions need to be checked */
       if (!functionNames.length) {
-        /** Log no warmup */
-        this.serverless.cli.log('WarmUP: no lambda to warm')
+        /** Log no healthcheck */
+        this.serverless.cli.log('HealthCheck: no lambda to check')
         return true
       }
 
-      /** Write warm up function */
-      return this.createWarmUpFunctionArtifact(functionNames)
+      /** Write health check function */
+      return this.createHealthCheckFunctionArtifact(functionNames)
     }).then((skip) => {
-      /** Add warm up function to service */
+      /** Add healt check function to service */
       if (skip !== true) {
-        return this.addWarmUpFunctionToService()
+        return this.addHealthCheckFunctionToService()
       }
     })
   }
 
   /**
-   * @description Write warm up ES6 function
+   * @description Write health check ES6 function
    *
    * @param {Array} functionNames - Function names
    *
-   * @fulfil {} — Warm up function created
-   * @reject {Error} Warm up error
+   * @fulfil {} — Health check function created
+   * @reject {Error} Health check error
    *
    * @return {Promise}
    * */
-  createWarmUpFunctionArtifact (functionNames) {
-    /** Log warmup start */
-    this.serverless.cli.log('WarmUP: setting ' + functionNames.length + ' lambdas to be warm')
+  createHealthCheckFunctionArtifact (functionNames) {
+    /** Log healthcheck start */
+    this.serverless.cli.log('HealthCheck: setting ' + functionNames.length + ' lambdas to be checked')
 
     /** Get function names */
     functionNames = functionNames.map((functionName) => {
       const functionObject = this.serverless.service.getFunction(functionName)
-      this.serverless.cli.log('WarmUP: ' + functionObject.name)
+      this.serverless.cli.log('HealthCheck: ' + functionObject.name)
       return functionObject.name
     })
 
     /** Write function invoke promises and push to array */
-    const warmUpFunction = `"use strict";
+    const healthCheckFunction = `"use strict";
 
-/** Generated by Serverless WarmUP Plugin at ${new Date().toISOString()} */
+/** Generated by Serverless HealthCheck Plugin at ${new Date().toISOString()} */
 const aws = require("aws-sdk");
 aws.config.region = "${this.serverless.service.provider.region}";
 const lambda = new aws.Lambda();
 const functionNames = "${functionNames.join()}".split(",");
-module.exports.warmUp = (event, context, callback) => {
+module.exports.healthCheck = (event, context, callback) => {
   let invokes = [];
   let errors = 0;
-  console.log("Warm Up Start");
+  console.log("Health Check Start");
   functionNames.forEach((functionName) => {
     const params = {
       FunctionName: functionName,
       InvocationType: "RequestResponse",
       LogType: "None",
       Qualifier: process.env.SERVERLESS_ALIAS || "$LATEST",
-      Payload: JSON.stringify({ source: "serverless-plugin-warmup" })
+      Payload: JSON.stringify({ source: "serverless-plugin-healthcheck" })
     };
     invokes.push(lambda.invoke(params).promise().then((data) => {
-      console.log("Warm Up Invoke Success: " + functionName, data);
+      console.log("Health Check Invoke Success: " + functionName, data);
     }, (error) => {
       errors++;
-      console.log("Warm Up Invoke Error: " + functionName, error);
+      console.log("Health Check Invoke Error: " + functionName, error);
     }));
   });
   Promise.all(invokes).then(() => {
-    console.log("Warm Up Finished with " + errors + " invoke errors");
+    console.log("Health Check Finished with " + errors + " invoke errors");
     callback();
   });
 }`
 
-    /** Write warm up file */
-    return fs.outputFileAsync(this.pathFile, warmUpFunction)
+    /** Write health check file */
+    return fs.outputFileAsync(this.pathFile, healthCheckFunction)
   }
 
   /**
-   * @description Add warm up function to service
+   * @description Add Health check function to service
    *
-   * @return {Object} Warm up service function object
+   * @return {Object} Health check service function object
    * */
-  addWarmUpFunctionToService () {
-    /** SLS warm up function */
-    this.serverless.service.functions.warmUpPlugin = {
-      description: 'Serverless WarmUP Plugin',
-      events: this.warmup.schedule.map(schedule => { return { schedule } }),
+  addHealthCheckFunctionToService () {
+    /** SLS health check function */
+    this.serverless.service.functions.healthCheckPlugin = {
+      description: 'Serverless HealthCheck Plugin',
+      events: this.healthcheck.schedule.map(schedule => { return { schedule } }),
       handler: this.pathHandler,
-      memorySize: this.warmup.memorySize,
-      name: this.warmup.name,
+      memorySize: this.healthcheck.memorySize,
+      name: this.healthcheck.name,
       runtime: 'nodejs6.10',
       package: {
         individually: true,
         exclude: ['**'],
         include: [this.folderName + '/**']
       },
-      timeout: this.warmup.timeout
+      timeout: this.healthcheck.timeout
     }
 
     /** Return service function object */
-    return this.serverless.service.functions.warmUpPlugin
+    return this.serverless.service.functions.healthCheckPlugin
   }
 
   /**
-   * @description Warm up the functions immediately after deployment
+   * @description Health check the functions immediately after deployment
    *
-   * @fulfil {} — Functions warmed up sucessfuly
-   * @reject {Error} Functions couldn't be warmed up
+   * @fulfil {} — Functions checked up sucessfuly
+   * @reject {Error} Functions couldn't be health checked
    *
    * @return {Promise}
    * */
-  warmUpFunctions () {
-    this.serverless.cli.log('WarmUP: Pre-warming up your functions')
+  healthCheckFunctions () {
+    this.serverless.cli.log('HealthCheck: Pre-checking up your functions')
 
     const params = {
-      FunctionName: this.warmup.name,
+      FunctionName: this.healthcheck.name,
       InvocationType: 'RequestResponse',
       LogType: 'None',
       Qualifier: process.env.SERVERLESS_ALIAS || '$LATEST',
-      Payload: JSON.stringify({ source: 'serverless-plugin-warmup' })
+      Payload: JSON.stringify({ source: 'serverless-plugin-healthcheck' })
     }
 
     return this.provider.request('Lambda', 'invoke', params)
-      .then(data => this.serverless.cli.log('WarmUp: Functions sucessfuly pre-warmed'))
-      .catch(error => this.serverless.cli.log('WarmUp: Error while pre-warming functions', error))
+      .then(data => this.serverless.cli.log('HealthCheck: Functions sucessfuly pre-checked'))
+      .catch(error => this.serverless.cli.log('HealthCheck: Error while pre-checking functions', error))
   }
 }
 
-/** Export WarmUP class */
-module.exports = WarmUP
+/** Export HealthCheck class */
+module.exports = HealthCheck
