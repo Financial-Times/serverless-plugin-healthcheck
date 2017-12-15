@@ -14,10 +14,11 @@ Check the health of your lambdas.
 ## How it works
 
 Healthcheck solves *heart beat* by creating one schedule event lambda that invokes all the service lambdas you select in a configured time interval (default: 5 minutes) or a specific time, forcing your containers to report their status.
+In aditional, it creates a new endpoint (named __health by default) which can be called to provide a json summary of the current status of each healthcheck.
 
 ## Setup
 
- Install via npm in the root of your Serverless service:
+Install via npm in the root of your Serverless service:
 ```
 npm install serverless-plugin-healthcheck --save-dev
 ```
@@ -29,34 +30,46 @@ plugins:
   - serverless-plugin-healthcheck
 ```
 
-* Add a `healthcheck` property to all functions you want to be warm.
-
-You can enable healthcheck in general:
+* Add a `healthcheck` property to all the events in all the functions you want to be checked.
 
 ```yml
 functions:
   hello:
-    healthcheck: true
+    events
+      - http:
+          path: /schema/{TypeID}
+          method: get
+          private: false
+          healthcheck:
+            params: {"subjectType": "system"}
+      - http:
+          path: /schema/{TypeID}/{ItemID}
+          method: get
+          private: false
+          healthcheck:
+            params: {"subjectType": "system", "subjectID": "dewey"}
 ```
 
-For a specific stage:
+* Add additional format properties to trigger the output of a full diagnotic for each check
 
 ```yml
-functions:
-  hello:
-    healthcheck: production
+         healthcheck:
+            params: {"subjectType": "system"}
+            format:
+              id: fullschema
+              name: Get system schema
+              ok: []
+              severity: 2
+              businessImpact: Unable to describe system records
+              technicalSummary: The schema for the system type cannot be read from the CMDB
+              checkOutput: false
+              lastUpdated: []
 ```
+Note that the ok and lastUpdated are reserved and will automatically be populated, as follows:
+o ok is true when statuscode is 200, false otherwise
+o lastUpdated is the date.time at which the check was ran
 
-For several stages:
-
-```yml
-functions:
-  hello:
-    healthcheck:
-      - production
-      - staging
-```
-* helthcheck to be able to `invoke` lambdas requires the following Policy Statement in `iamRoleStatements`:
+* healthcheck to be able to `invoke` lambdas requires the following Policy Statement in `iamRoleStatements`:
 
 ```yaml
 iamRoleStatements:
@@ -80,22 +93,35 @@ If using pre-check, the deployment user also needs a similar policy so it can ru
 * **cleanFolder** (default `true`)
 * **memorySize** (default `128`)
 * **name** (default `${service}-${stage}-healthcheck-plugin`)
-* **schedule** (default `rate(5 minutes)`) - More examples [here](https://docs.aws.amazon.com/lambda/latest/dg/tutorial-scheduled-events-schedule-expressions.html).
+* **schedule** (default `rate(5 minutes)`)
 * **timeout** (default `10` seconds)
-* **prewarm** (default `false`)
-* **folderName** (default `_warmup`)
+* **precheck** (default `false`)
+* **endpoint** (default `__health`)
 
 ```yml
 custom:
-  warmup:
+  healthcheck:
     cleanFolder: false,
     memorySize: 256
     name: 'make-them-pop'
-    schedule: 'cron(0/5 8-17 ? * MON-FRI *)' // Run WarmUP every 5 minutes Mon-Fri between 8:00am and 5:55pm (UTC)
+    schedule: 'rate(15 minutes)'
     timeout: 20
-    precheck: true // Run healthcheck immediately after a deployment
-    folderName: '_healthcheck' // Name of the folder created for the generated healthcheck lambda
+    precheck: true
+    endpoint: _show_health
 ```
+
+* define a custom header for the healtcheck to give the healtcheck output some contaxt
+
+```yml
+    endpoint: __health
+    format:
+      schemaVersion: 1
+      name: A great system that uses healthchecks
+      systemCode: greatsys
+      checks: []
+```
+
+Note that checks is reserved and is used to identify the location into which the array of check responses will be placed
 
 **Lambdas invoked by healthcheck will have event source `serverless-plugin-healthcheck`:**
 
@@ -121,9 +147,9 @@ Lambda pricing [here](https://aws.amazon.com/lambda/pricing/). CloudWatch pricin
 
 #### Example
 
-Free Tier not included + Default WarmUP options + 10 lambdas to warm, each with `memorySize = 1024` and `duration = 10`:
-* WarmUP: runs 8640 times per month = $0.18
-* 10 warm lambdas: each invoked 8640 times per month = $14.4
+Free Tier not included + Default WarmUP options + 10 lambdas to check, each with `memorySize = 1024` and `duration = 10`:
+* Healthcheck: runs 8640 times per month = $0.18
+* 10 checked lambdas: each invoked 8640 times per month = $14.4
 * Total = $14.58
 
 CloudWatch costs are not in this example because they are very low.

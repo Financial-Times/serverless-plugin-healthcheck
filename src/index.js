@@ -12,6 +12,7 @@
 const BbPromise = require('bluebird')
 const fs = BbPromise.promisifyAll(require('fs-extra'))
 const path = require('path')
+const tokenSubstitute = require('token-substitute')
 
 /**
  * @classdesc Check the health of your lambdas
@@ -25,7 +26,7 @@ class HealthCheck {
    * @param {!Object} serverless - Serverless object
    * @param {!Object} options - Serverless options
    * */
-  constructor (serverless, options) {
+  constructor(serverless, options) {
     /** Serverless variables */
     this.serverless = serverless
     this.options = options
@@ -47,7 +48,7 @@ class HealthCheck {
    *
    * @return {(boolean|Promise)}
    * */
-  afterPackageInitialize () {
+  afterPackageInitialize() {
     this.configPlugin()
     return this.createHealthCheck()
   }
@@ -60,7 +61,7 @@ class HealthCheck {
    *
    * @return {Promise}
    * */
-  afterCreateDeploymentArtifacts () {
+  afterCreateDeploymentArtifacts() {
     return this.cleanFolder()
   }
 
@@ -72,7 +73,7 @@ class HealthCheck {
    *
    * @return {Promise}
    * */
-  afterDeployFunctions () {
+  afterDeployFunctions() {
     this.configPlugin()
     if (this.healthcheck.precheck) {
       return this.healthCheckFunctions()
@@ -84,7 +85,7 @@ class HealthCheck {
    *
    * @return {}
    * */
-  configPlugin () {
+  configPlugin() {
     /** Set health check folder, file and handler paths */
     this.folderName = '_healthcheck'
     if (this.custom && this.custom.healthcheck && typeof this.custom.healthcheck.folderName === 'string') {
@@ -101,7 +102,8 @@ class HealthCheck {
       name: this.serverless.service.service + '-' + this.options.stage + '-healthcheck-plugin',
       schedule: ['rate(5 minutes)'],
       timeout: 10,
-      prewarm: false
+      precheck: false,
+      endpoint: '__health'
     }
 
     /** Set global custom options */
@@ -140,6 +142,11 @@ class HealthCheck {
     if (typeof this.custom.healthcheck.precheck === 'boolean') {
       this.healthcheck.precheck = this.custom.healthcheck.precheck
     }
+
+    /** Endpoint name */
+    if (typeof this.custom.healthcheck.endpoint === 'string') {
+      this.healthcheck.endpoint = this.custom.healthcheck.endpoint
+    }
   }
 
   /**
@@ -149,7 +156,7 @@ class HealthCheck {
    *
    * @return {String} Absolute file path
    * */
-  getPath (file) {
+  getPath(file) {
     return path.join(this.serverless.config.servicePath, file)
   }
 
@@ -161,7 +168,7 @@ class HealthCheck {
    *
    * @return {Promise}
    * */
-  cleanFolder () {
+  cleanFolder() {
     if (!this.healthcheck.cleanFolder) {
       return Promise.resolve()
     }
@@ -176,92 +183,101 @@ class HealthCheck {
    *
    * @return {Promise}
    * */
-  createHealthCheck () {
-    /** Get functions */
-    const allFunctions = this.serverless.service.getAllFunctions()
+  createHealthCheck() {
+    return this.getFunctionsWithHealthChecks()
+      .then((functionNames) => {
+        if (!functionNames.length) {
+          this.serverless.cli.log('HealthCheck: no lambda to check')
+          return true
+        }
 
-    /** Filter functions for health check */
-    return BbPromise.filter(allFunctions, (functionName) => {
+        return this.createHealthCheckFunctionArtifact(functionNames)
+      }).then((skip) => {
+        if (skip !== true) {
+          return this.addHealthCheckFunctionToService()
+        }
+      })
+  }
+
+  /**
+   * @description Discover functions that are configured for healthchecks
+   *
+   * @fulfil {} — List if healthcheck function objects
+   * @reject {Error} Health check error
+   *
+   * @return {Promise}
+   * */
+  getFunctionsWithHealthChecks() {
+    const allFunctions = this.serverless.service.getAllFunctions().map( (functionName) => {
       const functionObject = this.serverless.service.getFunction(functionName)
-
-      /** Function needs to be warm */
-      if (functionObject.healthcheck === true ||
-        functionObject.healthcheck === this.options.stage ||
-        (Array.isArray(functionObject.healthcheck) &&
-          functionObject.healthcheck.indexOf(this.options.stage) !== -1)) {
-        return functionObject
+      return {
+        name: functionObject.name,
+        stage: functionObject.healthcheck,
+        checks: this.getEventsWithHealthChecks(functionName)
       }
-    }).then((functionNames) => {
-      /** Skip writing if no functions need to be checked */
-      if (!functionNames.length) {
-        /** Log no healthcheck */
-        this.serverless.cli.log('HealthCheck: no lambda to check')
-        return true
-      }
+    })
 
-      /** Write health check function */
-      return this.createHealthCheckFunctionArtifact(functionNames)
-    }).then((skip) => {
-      /** Add healt check function to service */
-      if (skip !== true) {
-        return this.addHealthCheckFunctionToService()
+    return BbPromise.filter(allFunctions, (functionInfo) => {
+      /** Function needs to be checked */
+      if (functionInfo.stage === true ||
+        functionInfo.stage === this.options.stage ||
+        (Array.isArray(functionInfo.stage) &&
+          functionInfo.stage.indexOf(this.options.stage) !== -1)) {
+        return functionInfo
       }
     })
   }
 
   /**
+   * @description Discover events within function that are configured for healthchecks
+   *
+   * @return (Array) of healthcheck parameters
+   * */
+  getEventsWithHealthChecks(functionName) {
+
+    return this.serverless.service.getAllEventsInFunction(functionName)
+      .reduce( (healthchecks, eventObject) => {
+        if (eventObject.http.healthcheck) {
+          healthchecks.push({
+            params: eventObject.http.healthcheck.params,
+            format: eventObject.http.healthcheck.format
+          })
+        }
+        return healthchecks
+      }, [] )
+  }
+
+  /**
    * @description Write health check ES6 function
    *
-   * @param {Array} functionNames - Function names
+   * @param {Array} functionObjects - Function infomation, inlcuding event params
    *
    * @fulfil {} — Health check function created
    * @reject {Error} Health check error
    *
    * @return {Promise}
    * */
-  createHealthCheckFunctionArtifact (functionNames) {
-    /** Log healthcheck start */
-    this.serverless.cli.log('HealthCheck: setting ' + functionNames.length + ' lambdas to be checked')
 
-    /** Get function names */
-    functionNames = functionNames.map((functionName) => {
-      const functionObject = this.serverless.service.getFunction(functionName)
+  createHealthCheckFunctionArtifact(functionObjects) {
+
+    this.serverless.cli.log('HealthCheck: setting ' + functionObjects.length + ' lambdas to be checked')
+
+    const functionNames = functionObjects.map((functionObject) => {
       this.serverless.cli.log('HealthCheck: ' + functionObject.name)
-      return functionObject.name
+      const eventNames = functionObject.checks.map((eventObject) => {
+        this.serverless.cli.log('    Params: ' + JSON.stringify(eventObject.params))
+      })
     })
 
-    /** Write function invoke promises and push to array */
-    const healthCheckFunction = `"use strict";
-
-/** Generated by Serverless HealthCheck Plugin at ${new Date().toISOString()} */
-const aws = require("aws-sdk");
-aws.config.region = "${this.serverless.service.provider.region}";
-const lambda = new aws.Lambda();
-const functionNames = "${functionNames.join()}".split(",");
-module.exports.healthCheck = (event, context, callback) => {
-  let invokes = [];
-  let errors = 0;
-  console.log("Health Check Start");
-  functionNames.forEach((functionName) => {
-    const params = {
-      FunctionName: functionName,
-      InvocationType: "RequestResponse",
-      LogType: "None",
-      Qualifier: process.env.SERVERLESS_ALIAS || "$LATEST",
-      Payload: JSON.stringify({ source: "serverless-plugin-healthcheck" })
-    };
-    invokes.push(lambda.invoke(params).promise().then((data) => {
-      console.log("Health Check Invoke Success: " + functionName, data);
-    }, (error) => {
-      errors++;
-      console.log("Health Check Invoke Error: " + functionName, error);
-    }));
-  });
-  Promise.all(invokes).then(() => {
-    console.log("Health Check Finished with " + errors + " invoke errors");
-    callback();
-  });
-}`
+    const healthcheckTemplate = fs.readFileSync('./.serverless_plugins/plugin_template.js', 'utf8');
+    const healthCheckFunction = tokenSubstitute(healthcheckTemplate,{
+      tokens:{
+        creationDate: new Date().toISOString(),
+        awsRegion: this.serverless.service.provider.region,
+        healthchecks: JSON.stringify(functionObjects),
+        outputHeader: JSON.stringify(this.custom.healthcheck.format)
+      }
+    });
 
     /** Write health check file */
     return fs.outputFileAsync(this.pathFile, healthCheckFunction)
@@ -274,9 +290,19 @@ module.exports.healthCheck = (event, context, callback) => {
    * */
   addHealthCheckFunctionToService () {
     /** SLS health check function */
+    this.serverless.cli.log(JSON.stringify(this.healthcheck.schedule))
     this.serverless.service.functions.healthCheckPlugin = {
       description: 'Serverless HealthCheck Plugin',
-      events: this.healthcheck.schedule.map(schedule => { return { schedule } }),
+      events: [{
+        "http":{
+          "path": this.healthcheck.endpoint,
+          "method":"get",
+          "private":false
+        },
+        "schedule": {
+          rate: this.healthcheck.schedule
+        }
+      }],
       handler: this.pathHandler,
       memorySize: this.healthcheck.memorySize,
       name: this.healthcheck.name,
@@ -302,6 +328,7 @@ module.exports.healthCheck = (event, context, callback) => {
    * @return {Promise}
    * */
   healthCheckFunctions () {
+
     this.serverless.cli.log('HealthCheck: Pre-checking up your functions')
 
     const params = {
@@ -313,8 +340,15 @@ module.exports.healthCheck = (event, context, callback) => {
     }
 
     return this.provider.request('Lambda', 'invoke', params)
-      .then(data => this.serverless.cli.log('HealthCheck: Functions sucessfuly pre-checked'))
-      .catch(error => this.serverless.cli.log('HealthCheck: Error while pre-checking functions', error))
+      .then(data => {
+        const response = JSON.parse(data.Payload)
+        if ((response.statusCode && response.statusCode!==200) || response.errorMessage) {
+          this.serverless.cli.log("HealthCheck: Failure: " + response.errorMessage);
+        } else {
+          this.serverless.cli.log('HealthCheck: Functions successfuly pre-checked')
+        }
+      })
+      .catch(error => this.serverless.cli.log('HealthCheck: Error while pre-checking functions'+ error))
   }
 }
 
