@@ -1,6 +1,6 @@
 {
   "name": "serverless-plugin-healthcheck",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Check your lambdas are healthy.",
   "main": "src/index.js",
   "scripts": {
@@ -11,7 +11,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/FinancialTimes/serverless-plugin-healthcheck.git"
+    "url": "git+https://github.com/Financial-Times/serverless-plugin-healthcheck.git"
   },
   "keywords": [
     "serverless plugin healthcheck lambdas",
