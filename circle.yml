@@ -1,0 +1,13 @@
+machine:
+  node:
+
+deployment:
+  release:
+    tag: /v.*/
+    commands:
+      - printf "_auth = $NPM_AUTH\nemail = $NPM_EMAIL\n" > .npmrc
+      - npm publish --access public
+
+test:
+  override:
+    - touch no-tests

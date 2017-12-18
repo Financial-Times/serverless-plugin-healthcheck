@@ -1,6 +1,6 @@
 {
   "name": "serverless-plugin-healthcheck",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Check your lambdas are healthy.",
   "main": "src/index.js",
   "scripts": {
@@ -26,7 +26,8 @@
   "homepage": "https://github.com/FinancialTimes/serverless-plugin-healthcheck#readme",
   "dependencies": {
     "bluebird": "^3.5.0",
-    "fs-extra": "^3.0.1"
+    "fs-extra": "^3.0.1",
+    "token-substitute": "^1.2.0"
   },
   "devDependencies": {
     "standard": "^10.0.2"
