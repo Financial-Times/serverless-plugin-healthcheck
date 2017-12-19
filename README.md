@@ -1,7 +1,7 @@
 # Serverless HealthCheck Plugin
 
 [![serverless](http://public.serverless.com/badges/v3.svg)](http://www.serverless.com)
-[[![npm (scoped)](https://img.shields.io/npm/v/@financial-times/serverless-plugin-healthcheck.svg)](https://www.npmjs.com/package/@financial-times/serverless-plugin-healthcheck)
+[![npm (scoped)](https://img.shields.io/npm/v/@financial-times/serverless-plugin-healthcheck.svg)](https://www.npmjs.com/package/@financial-times/serverless-plugin-healthcheck)
 [![npm](https://img.shields.io/npm/dw/@financial-times/serverless-plugin-healthcheck)](https://www.npmjs.com/package/@financial-times/serverless-plugin-healthcheck)
 [![license](https://img.shields.io/npm/l/serverless-plugin-healthcheck.svg)](https://raw.githubusercontent.com/FidelLimited/serverless-plugin-healthcheck/master/LICENSE)
 
