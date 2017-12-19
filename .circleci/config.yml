@@ -66,6 +66,8 @@ workflows:
     jobs:
       - install
       - release:
+          requires:
+            - install
           filters:
             branches:
               ignore: /.*/
