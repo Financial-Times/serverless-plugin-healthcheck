@@ -1,6 +1,6 @@
 {
     "name": "@financial-times/serverless-plugin-healthcheck",
-    "version": "0.0.5",
+    "version": "0.0.6",
     "description": "Check your lambdas are healthy.",
     "main": "src/index.js",
     "scripts": {
