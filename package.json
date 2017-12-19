@@ -1,35 +1,44 @@
 {
-  "name": "serverless-plugin-healthcheck",
-  "version": "0.0.3",
-  "description": "Check your lambdas are healthy.",
-  "main": "src/index.js",
-  "scripts": {
-    "lint": "standard src/**",
-    "lint:fix": "standard --fix src/**"
-  },
-  "author": "Geoff Thorpe",
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/Financial-Times/serverless-plugin-healthcheck.git"
-  },
-  "keywords": [
-    "serverless plugin healthcheck lambdas",
-    "serverless healthcheck",
-    "serverless plugin",
-    "lambda serverless",
-    "healthcheck lambda"
-  ],
-  "bugs": {
-    "url": "https://github.com/FinancialTimes/serverless-plugin-healthcheck/issues"
-  },
-  "homepage": "https://github.com/FinancialTimes/serverless-plugin-healthcheck#readme",
-  "dependencies": {
-    "bluebird": "^3.5.0",
-    "fs-extra": "^3.0.1",
-    "token-substitute": "^1.2.0"
-  },
-  "devDependencies": {
-    "standard": "^10.0.2"
-  }
+    "name": "@financial-times/serverless-plugin-healthcheck",
+    "version": "0.0.3",
+    "description": "Check your lambdas are healthy.",
+    "main": "src/index.js",
+    "scripts": {
+        "lint": "standard src/**",
+        "lint:fix": "standard --fix src/**",
+        "precommit": "lint-staged"
+    },
+    "lint-staged": {
+        "*.{js}": ["standard --fix", "git add"]
+    },
+    "author": "Geoff Thorpe",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url":
+            "git+https://github.com/Financial-Times/serverless-plugin-healthcheck.git"
+    },
+    "keywords": [
+        "serverless plugin healthcheck lambdas",
+        "serverless healthcheck",
+        "serverless plugin",
+        "lambda serverless",
+        "healthcheck lambda"
+    ],
+    "bugs": {
+        "url":
+            "https://github.com/Financial-Times/serverless-plugin-healthcheck/issues"
+    },
+    "homepage":
+        "https://github.com/Financial-Times/serverless-plugin-healthcheck#readme",
+    "dependencies": {
+        "bluebird": "^3.5.0",
+        "fs-extra": "^3.0.1",
+        "token-substitute": "^1.2.0"
+    },
+    "devDependencies": {
+        "husky": "^0.14.3",
+        "lint-staged": "^6.0.0",
+        "standard": "^10.0.2"
+    }
 }

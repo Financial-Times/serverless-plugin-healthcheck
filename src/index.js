@@ -6,8 +6,7 @@ const path = require('path')
 const tokenSubstitute = require('token-substitute')
 
 class HealthCheck {
-
-  constructor(serverless, options) {
+  constructor (serverless, options) {
     this.serverless = serverless
     this.options = options
     this.custom = this.serverless.service.custom
@@ -20,23 +19,23 @@ class HealthCheck {
     }
   }
 
-  afterPackageInitialize() {
+  afterPackageInitialize () {
     this.configPlugin()
     return this.createHealthCheck()
   }
 
-  afterCreateDeploymentArtifacts() {
+  afterCreateDeploymentArtifacts () {
     return this.cleanFolder()
   }
 
-  afterDeployFunctions() {
+  afterDeployFunctions () {
     this.configPlugin()
     if (this.healthcheck.precheck) {
       return this.healthCheckFunctions()
     }
   }
 
-  configPlugin() {
+  configPlugin () {
     this.folderName = '_healthcheck'
     if (this.custom && this.custom.healthcheck && typeof this.custom.healthcheck.folderName === 'string') {
       this.folderName = this.custom.healthcheck.folderName
@@ -99,18 +98,18 @@ class HealthCheck {
     }
   }
 
-  getPath(file) {
+  getPath (file) {
     return path.join(this.serverless.config.servicePath, file)
   }
 
-  cleanFolder() {
+  cleanFolder () {
     if (!this.healthcheck.cleanFolder) {
       return Promise.resolve()
     }
     return fs.removeAsync(this.pathFolder)
   }
 
-  createHealthCheck() {
+  createHealthCheck () {
     return this.getFunctionsWithHealthChecks()
       .then((functionNames) => {
         if (!functionNames.length) {
@@ -126,7 +125,7 @@ class HealthCheck {
       })
   }
 
-  getFunctionsWithHealthChecks() {
+  getFunctionsWithHealthChecks () {
     const allFunctions = this.serverless.service.getAllFunctions().map((functionName) => {
       const functionObject = this.serverless.service.getFunction(functionName)
       return {
@@ -146,7 +145,7 @@ class HealthCheck {
     })
   }
 
-  getEventsWithHealthChecks(functionName) {
+  getEventsWithHealthChecks (functionName) {
     return this.serverless.service.getAllEventsInFunction(functionName)
       .reduce((healthchecks, eventObject) => {
         if (eventObject.http.healthcheck) {
@@ -159,7 +158,7 @@ class HealthCheck {
       }, [])
   }
 
-  createHealthCheckFunctionArtifact(functionObjects) {
+  createHealthCheckFunctionArtifact (functionObjects) {
     this.serverless.cli.log('HealthCheck: setting ' + functionObjects.length + ' lambdas to be checked')
 
     functionObjects.map((functionObject) => {
