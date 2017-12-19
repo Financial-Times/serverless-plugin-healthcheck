@@ -56,7 +56,7 @@ jobs:
 
       - deploy:
           command: |
-            npm install -g npm-cli-login
+            sudo npm install -g npm-cli-login
             NPM_USER=$NPM_USER NPM_PASS=$NPM_PASSWORD NPM_EMAIL=$NPM_EMAIL npm-cli-login
             npm publish --access public
 
