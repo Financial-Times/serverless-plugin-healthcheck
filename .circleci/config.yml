@@ -65,9 +65,9 @@ workflows:
   build-and-deploy:
     jobs:
       - install:
-        filters:
-          tags:
-            only: /.*/
+          filters:
+            tags:
+              only: /.*/
       - release:
           requires:
             - install
