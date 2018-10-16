@@ -32,12 +32,23 @@ plugins:
   - serverless-plugin-healthcheck
 ```
 
+* Add a `healthcheck` property to all the functions that contain any events you want to be checked.  The value can be a boolean, a stage name, or an array of stage names.
+
+Boolean:
+
+```yml
+functions:
+  hello:
+    healthcheck: true | dev | [ dev, test, prod ]
+```
+ 
 * Add a `healthcheck` property to all the events in all the functions you want to be checked.
 
 ```yml
 functions:
   hello:
-    events
+    healthcheck: true
+    events:
       - http:
           path: /schema/{TypeID}
           method: get
@@ -52,7 +63,7 @@ functions:
             params: {"subjectType": "system", "subjectID": "dewey"}
 ```
 
-* Add additional format properties to trigger the output of a full diagnotic for each check
+* Add additional format properties to trigger the output of a full diagnostic for each check
 
 ```yml
          healthcheck:
@@ -114,7 +125,7 @@ custom:
     endpoint: _show_health
 ```
 
-* define a custom header for the healtcheck to give the healtcheck output some contaxt
+* define a custom header for the healthcheck to give the healthcheck output some context
 
 ```yml
     endpoint: __health
