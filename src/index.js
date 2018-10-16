@@ -48,6 +48,7 @@ class HealthCheck {
     this.healthcheck = {
       cleanFolder: true,
       memorySize: 128,
+      role: undefined,
       name: this.serverless.service.service + '-' + this.options.stage + '-healthcheck-plugin',
       schedule: ['rate(5 minutes)'],
       timeout: 10,
@@ -68,6 +69,11 @@ class HealthCheck {
     /** Memory size */
     if (typeof this.custom.healthcheck.memorySize === 'number') {
       this.healthcheck.memorySize = this.custom.healthcheck.memorySize
+    }
+
+    /** Role */
+    if (typeof this.custom.healthcheck.role === 'string') {
+      this.healthcheck.role = this.custom.healthcheck.role
     }
 
     /** Function name */
@@ -209,6 +215,12 @@ class HealthCheck {
         include: [this.folderName + '/**']
       },
       timeout: this.healthcheck.timeout
+    }
+
+    if (typeof this.healthcheck.role === 'string') {
+      this.serverless.service.functions.healthCheckPlugin.role = {
+        'Fn::GetAtt': [ this.healthcheck.role, 'Arn' ]
+      }
     }
 
     return this.serverless.service.functions.healthCheckPlugin
