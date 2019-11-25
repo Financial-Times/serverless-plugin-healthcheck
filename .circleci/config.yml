@@ -1,4 +1,8 @@
-version: 2
+version: 2.1
+
+orbs:
+  change-api: financial-times/change-api@0.24.0
+  ft-snyk-orb: financial-times/ft-snyk-orb@0
 
 references:
 
@@ -68,9 +72,45 @@ workflows:
           filters:
             tags:
               only: /.*/
+
+      #Scan package.json for vulnerable dependencies while developing
+      - ft-snyk-orb/scan-js-packages:
+          context: rel-eng-creds
+          requires:
+            - install
+          filters:
+            tags:
+              only: /.*/
+
       - release:
           requires:
             - install
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /v.*/
+
+      #Scan and monitor vulnerabilities once in production
+      - ft-snyk-orb/scan-and-monitor-js-packages:
+          name: snyk-scan-and-monitor
+          context: rel-eng-creds
+          requires:
+            - release
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /v.*/
+
+      - change-api/release-log:
+          name: 'change_log_prod'
+          context: 'rel-eng-creds'
+          systemCode: 'serverless-plugin-healthcheck'
+          environment: 'prod'
+          slackChannels: 'rel-eng-changes'
+          requires:
+            - release
           filters:
             branches:
               ignore: /.*/
