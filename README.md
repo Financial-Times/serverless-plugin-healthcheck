@@ -24,14 +24,14 @@ In aditional, it creates a new endpoint (named \_\_health by default) which can 
 Install via npm in the root of your Serverless service:
 
 ```
-npm install serverless-plugin-healthcheck --save-dev
+npm install @financial-times/serverless-plugin-healthcheck --save-dev
 ```
 
 * Add the plugin to the `plugins` array in your Serverless `serverless.yml`:
 
 ```yml
 plugins:
-  - serverless-plugin-healthcheck
+  - '@financial-times/serverless-plugin-healthcheck'
 ```
 
 * Add a `healthcheck` property to all the events in all the functions you want to be checked.
